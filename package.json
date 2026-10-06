@@ -1,0 +1,15 @@
+{
+  "name": "ftpsync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "本地文件变更实时同步到 FTP/FTPS 远程目录的桌面工具",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "preview": "python -m http.server 8899 --bind 127.0.0.1 --directory ui",
+    "e2e": "cargo run --manifest-path sync-core/Cargo.toml --example e2e_sync"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

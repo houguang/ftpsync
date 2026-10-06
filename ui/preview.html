@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>FTPSync 界面预览</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!--
+    界面预览页（开发用，不参与应用运行）。
+
+    index.html 是界面结构的唯一来源：本页把它取回来注入到自身，
+    再挂载 tauri-mock.js 提供的假桥接，从而在普通浏览器里渲染出真实界面。
+    这样调整样式时不需要真的启动桌面应用，也不会出现两套结构互相漂移。
+
+    用法：
+      cd ui && python -m http.server 8899
+      浏览器打开 http://127.0.0.1:8899/preview.html
+  -->
+  <script src="tauri-mock.js"></script>
+  <script>
+    (async () => {
+      const html = await (await fetch('index.html')).text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      document.body.innerHTML = doc.body.innerHTML;
+      document.body.querySelectorAll('script').forEach((el) => el.remove());
+
+      const script = document.createElement('script');
+      script.src = 'app.js';
+      document.body.appendChild(script);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# 统一换行符，避免 Windows / macOS / Linux 之间产生整文件级别的伪差异
+* text=auto eol=lf
+
+# 二进制资源不做换行转换
+*.png binary
+*.ico binary
+*.exe binary

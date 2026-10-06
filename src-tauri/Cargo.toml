@@ -1,0 +1,41 @@
+[package]
+name = "ftpsync"
+version = "0.1.0"
+description = "实时文件同步工具（本地 -> FTP/FTPS 远程目录）"
+authors = ["houguang"]
+edition = "2021"
+rust-version = "1.88"
+
+[lib]
+name = "ftpsync_lib"
+crate-type = ["lib"]
+
+[[bin]]
+name = "FTPSync"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+# 说明：schemars 0.8（tauri-build 的传递构建依赖）依赖 indexmap 1.x。
+# indexmap 1.9.3 的 build.rs 通过 autocfg 探测 sysroot 中的 std 来决定是否
+# 发出 `has_std` cfg；在较新的 Rust 工具链上该探测会失败，导致 IndexMap
+# 退化为 `IndexMap<K, V, S>`（无默认参数），schemars 随之编译报错 E0107。
+# 显式在本 crate 打开 indexmap 的 std 特性，可让 build.rs 直接走
+# `CARGO_FEATURE_STD` 分支发出 has_std，从而绕开探测。
+indexmap = { version = "1.9", features = ["std"] }
+
+[dependencies]
+sync-core = { path = "../sync-core" }
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+notify = "8"
+globset = "0.4"
+suppaftp = { version = "12", features = ["native-tls"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

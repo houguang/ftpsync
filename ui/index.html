@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FTPSync · 实时文件同步</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-bar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 8h13l-3.5-3.5" />
+          <path d="M20 16H7l3.5 3.5" />
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>FTPSync</h1>
+        <p>本地文件变更 · 实时同步至 FTP 远程目录</p>
+      </div>
+    </div>
+
+    <div class="app-bar-right">
+      <div class="status-pill" id="statusPill" data-state="stopped">
+        <span class="dot"></span>
+        <span id="statusText">已停止</span>
+      </div>
+      <button class="btn btn-primary" id="btnStart">启动监听</button>
+      <button class="btn btn-ghost" id="btnStop" disabled>停止</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ============================ 左：配置 ============================ -->
+    <section class="panel panel-config">
+      <div class="panel-head">
+        <h2>同步配置</h2>
+        <span class="dirty-flag" id="dirtyFlag" hidden>有未保存的修改</span>
+      </div>
+
+      <div class="panel-body">
+        <div class="group">
+          <div class="group-title">目录</div>
+
+          <label class="field">
+            <span class="label">本地同步目录</span>
+            <div class="row">
+              <input type="text" id="localDir" placeholder="例如 D:\www\site" spellcheck="false" />
+              <button class="btn btn-mini" id="btnPickLocal">选择…</button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span class="label">远程同步目录</span>
+            <div class="row">
+              <input type="text" id="remoteDir" placeholder="例如 /www/wwwroot/site" spellcheck="false" />
+            </div>
+            <span class="hint">FTP 服务器上的绝对路径，本地目录结构将原样映射到此目录下。</span>
+          </label>
+        </div>
+
+        <div class="group">
+          <div class="group-title">FTP 服务器</div>
+
+          <div class="field-grid">
+            <label class="field field-span2">
+              <span class="label">服务器地址</span>
+              <input type="text" id="ftpHost" placeholder="ftp.example.com 或 192.168.1.10" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span class="label">端口</span>
+              <input type="number" id="ftpPort" min="1" max="65535" value="21" />
+            </label>
+            <label class="field">
+              <span class="label">超时（秒）</span>
+              <input type="number" id="ftpTimeout" min="5" max="600" value="30" />
+            </label>
+          </div>
+
+          <div class="field-grid">
+            <label class="field">
+              <span class="label">用户名</span>
+              <input type="text" id="ftpUser" autocomplete="off" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span class="label">密码</span>
+              <div class="row">
+                <input type="password" id="ftpPass" autocomplete="off" />
+                <button class="btn btn-mini" id="btnTogglePass" type="button">显示</button>
+              </div>
+            </label>
+          </div>
+
+          <div class="toggles">
+            <label class="switch">
+              <input type="checkbox" id="ftpSecure" />
+              <span class="track"><span class="thumb"></span></span>
+              <span class="switch-text">
+                FTPS 加密
+                <em>显式 TLS（AUTH TLS），明文 FTP 请关闭</em>
+              </span>
+            </label>
+          </div>
+
+          <div class="row row-gap">
+            <button class="btn btn-secondary" id="btnTest">测试连接</button>
+            <span class="inline-result" id="testResult"></span>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">同步策略</div>
+
+          <div class="toggles">
+            <label class="switch">
+              <input type="checkbox" id="mirrorDelete" />
+              <span class="track"><span class="thumb"></span></span>
+              <span class="switch-text">
+                镜像删除
+                <em>本地删除文件后，同步删除远端对应文件</em>
+              </span>
+            </label>
+
+            <label class="switch switch-warn">
+              <input type="checkbox" id="cleanExtraneous" />
+              <span class="track"><span class="thumb"></span></span>
+              <span class="switch-text">
+                严格镜像（清理远端多余文件）
+                <em>全量同步时删除远端存在、本地已不存在的文件，请谨慎开启</em>
+              </span>
+            </label>
+
+            <label class="switch">
+              <input type="checkbox" id="autoStart" />
+              <span class="track"><span class="thumb"></span></span>
+              <span class="switch-text">
+                开机自动监听
+                <em>应用启动后自动开始监听</em>
+              </span>
+            </label>
+
+            <label class="switch">
+              <input type="checkbox" id="syncOnStart" />
+              <span class="track"><span class="thumb"></span></span>
+              <span class="switch-text">
+                启动时全量同步
+                <em>开始监听时先比对一次全部文件</em>
+              </span>
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="label">事件防抖（毫秒）</span>
+            <input type="number" id="debounceMs" min="120" max="10000" step="50" value="800" />
+            <span class="hint">文件停止变动后等待此时长再上传，避免写入过程中传半成品。</span>
+          </label>
+
+          <label class="field">
+            <span class="label">忽略规则</span>
+            <textarea id="ignorePatterns" rows="6" spellcheck="false"
+                      placeholder="每行一条，支持通配符，例如：&#10;*.tmp&#10;node_modules&#10;.git"></textarea>
+            <span class="hint">相对路径 glob 匹配，命中任意层级即忽略。</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="panel-foot">
+        <button class="btn btn-primary" id="btnSave">保存配置</button>
+        <button class="btn btn-secondary" id="btnFullSync">立即全量同步</button>
+      </div>
+    </section>
+
+    <!-- ============================ 右：状态与日志 ============================ -->
+    <section class="panel panel-run">
+      <div class="panel-head">
+        <h2>运行状态</h2>
+        <div class="head-actions">
+          <span class="target" id="targetLine">—</span>
+          <button class="btn btn-mini" id="btnResetStats">重置计数</button>
+        </div>
+      </div>
+
+      <div class="stats" id="stats">
+        <div class="stat"><span class="stat-num" id="stUploaded">0</span><span class="stat-label">已上传</span></div>
+        <div class="stat"><span class="stat-num" id="stDeleted">0</span><span class="stat-label">已删除</span></div>
+        <div class="stat"><span class="stat-num" id="stSkipped">0</span><span class="stat-label">未变化</span></div>
+        <div class="stat"><span class="stat-num" id="stFailed">0</span><span class="stat-label">失败</span></div>
+        <div class="stat"><span class="stat-num" id="stPending">0</span><span class="stat-label">待处理</span></div>
+        <div class="stat"><span class="stat-num" id="stTotal">0</span><span class="stat-label">本地文件</span></div>
+      </div>
+
+      <div class="phase-bar" id="phaseBar" hidden>
+        <div class="phase-text" id="phaseText">同步中…</div>
+      </div>
+
+      <div class="log-head">
+        <h3>运行日志</h3>
+        <div class="log-actions">
+          <label class="check-inline"><input type="checkbox" id="autoScroll" checked />自动滚动</label>
+          <button class="btn btn-mini" id="btnClearLogs">清空</button>
+        </div>
+      </div>
+      <div class="log" id="log"></div>
+
+      <div class="last-sync" id="lastSync">尚未完成同步</div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
